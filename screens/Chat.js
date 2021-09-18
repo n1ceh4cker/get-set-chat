@@ -1,14 +1,20 @@
-import React, { useContext, useEffect, useState, useCallback } from 'react'
+import React, { useContext, useEffect, useState, useCallback, createRef } from 'react'
 import firestore from '@react-native-firebase/firestore';
 import { GiftedChat, Send, InputToolbar, Bubble, Composer } from 'react-native-gifted-chat'
 import { AuthContext } from '../context/AuthProvider'
-import { IconButton, Colors } from 'react-native-paper'
-import { StyleSheet } from 'react-native'
+import { IconButton, Colors, Text } from 'react-native-paper'
+import { StyleSheet, View, Keyboard, BackHandler } from 'react-native'
+import { Swipeable } from 'react-native-gesture-handler';
+import { EmojiKeyboard } from 'rn-emoji-keyboard';
 
-export default function Chat({ naviation, route }) {
+export default function Chat({ navigation, route }) {
   const { user } = useContext(AuthContext)
-  const thread = route.params.thread
+  const { title, thread } = route.params
   const [messages, setMessages] = useState([])
+  const [text, setText] = useState('')
+  const [reply, setReply] = useState()
+  const [show, setShow] = useState(false)
+  const gcRef = createRef()
   useEffect(() => {
     const subscribe = firestore().collection('threads').doc(thread._id)
       .collection('messages').orderBy('createdAt', 'desc').onSnapshot((querySnapshot) => {
@@ -21,15 +27,25 @@ export default function Chat({ naviation, route }) {
       })
     return subscribe
   }, [])
-  const onSend = useCallback(async (messages = []) => {
+  useEffect(() => {
+    const backAction = () => {
+      if (show) { setShow(false); return true }
+      else { navigation.navigate('Home'); return true }
+    }
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction)
+    return backHandler.remove
+  })
+  const onSend = useCallback(async (messages = [], reply = null) => {
     const msg = {
       text: messages[0].text,
       createdAt: new Date().getTime(),
       user: {
         _id: user.uid,
         name: user.displayName
-      }
+      },
+      reply: reply
     }
+    setReply(null)
     await firestore().collection('threads').doc(thread._id).collection('messages').add(msg)
     await firestore().collection('threads').doc(thread._id).update({
       latestMessage: {
@@ -38,11 +54,45 @@ export default function Chat({ naviation, route }) {
       }
     })
   }, [])
+  const renderCustomView = (props) => (
+    <>
+      {
+        props.currentMessage.reply &&
+        <View style={styles.row}>
+          <View style={styles.bar} />
+          <View style={styles.reply}>
+            <Text style={styles.username}>{props.currentMessage.reply.user === user.uid ? 'You' : title}</Text>
+            <Text>{props.currentMessage.reply.message}</Text>
+          </View>
+        </View>
+      }
+    </>
+  )
+  const renderChatFooter = () => (
+    <>
+      {
+        reply &&
+        <View style={styles.chatFooter}>
+          <View style={styles.bar} />
+          <View style={styles.reply}>
+            <Text style={styles.username}>{reply.user === user.uid ? 'You' : title}</Text>
+            <Text>{reply.message}</Text>
+          </View>
+          <IconButton icon='close' onPress={() => setReply(null)} />
+        </View>
+      }
+    </>
+  )
   const renderBubble = (props) => (
-    <Bubble {...props}
-      wrapperStyle={{ right: styles.wrapperRight, left: styles.wrapperLeft }}
-      textStyle={{ right: styles.text, left: styles.text }}
-    />
+    <Swipeable
+      renderLeftActions={() => <IconButton icon='reply' />}
+      onSwipeableLeftOpen={() => { setReply({ message: props.currentMessage.text, user: props.currentMessage.user._id }) }}>
+      <Bubble {...props}
+        wrapperStyle={{ right: styles.wrapperRight, left: styles.wrapperLeft }}
+        textStyle={{ right: styles.text, left: styles.text }}
+        renderCustomView={renderCustomView}
+      />
+    </Swipeable>
   )
   const renderSend = (props) => (
     <Send {...props} containerStyle={styles.send}>
@@ -52,20 +102,27 @@ export default function Chat({ naviation, route }) {
   const renderComposer = (props) => (
     <Composer {...props} textInputStyle={styles.composer} />
   )
+  const renderActions = (props) => (
+    <View {...props} style={styles.actions}>
+      {show ? <IconButton icon='keyboard-outline' color={Colors.grey400} onPress={() => { setShow(false); gcRef.current.focusTextInput(); }} /> :
+        <IconButton icon='emoticon-outline' color={Colors.grey400} onPress={() => { Keyboard.dismiss(); setShow(true); }} />}
+    </View>
+  )
   const renderInputToolbar = (props) => (
     <InputToolbar {...props}
       containerStyle={styles.inputToolbar}
       renderSend={renderSend}
       renderComposer={renderComposer}
+      renderActions={renderActions}
     />
   )
   const scrollToBottomComponent = () => (
     <IconButton icon='chevron-double-down' size={25} color={Colors.grey500} />
   )
-  return (
+  return (<>
     <GiftedChat
       messages={messages}
-      onSend={messages => onSend(messages)}
+      onSend={messages => onSend(messages, reply)}
       user={{
         _id: user.uid
       }}
@@ -76,7 +133,14 @@ export default function Chat({ naviation, route }) {
       scrollToBottom
       scrollToBottomComponent={scrollToBottomComponent}
       timeTextStyle={{ left: styles.timeText, right: styles.timeText }}
+      text={text}
+      onInputTextChanged={(text) => setText(text)}
+      textInputProps={{ onFocus: () => setShow(false) }}
+      renderChatFooter={renderChatFooter}
+      ref={gcRef}
     />
+    <EmojiKeyboard containerStyles={{ display: show ? 'flex' : 'none' }} categoryPosition='bottom' onEmojiSelected={e => setText(prevText => prevText + e.emoji)} />
+  </>
   )
 }
 const styles = StyleSheet.create({
@@ -92,7 +156,8 @@ const styles = StyleSheet.create({
   composer: {
     backgroundColor: Colors.white,
     borderRadius: 20,
-    padding: 10
+    padding: 10,
+    paddingStart: 35
   },
   wrapperRight: {
     backgroundColor: Colors.green500
@@ -106,5 +171,43 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontFamily: 'Quicksand'
+  },
+  chatFooter: {
+    flexDirection: 'row',
+    marginTop: 0,
+    marginBottom: 10,
+    marginHorizontal: 5
+  },
+  row: {
+    margin: 5,
+    width: '100%',
+    marginBottom: -5,
+    flexDirection: 'row'
+  },
+  reply: {
+    flexGrow: 1,
+    padding: 5,
+    marginRight: 10,
+    flexDirection: 'column',
+    backgroundColor: '#00000022',
+    borderBottomRightRadius: 10,
+    borderTopRightRadius: 10
+  },
+  username: {
+    color: Colors.purple200,
+    fontWeight: 'bold'
+  },
+  bar: {
+    width: 5,
+    height: 'auto',
+    backgroundColor: Colors.pink400,
+    borderTopLeftRadius: 15,
+    borderBottomLeftRadius: 15,
+  },
+  actions: {
+    position: 'absolute',
+    left: 5,
+    bottom: 0,
+    zIndex: 10
   }
 })

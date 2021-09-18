@@ -24,7 +24,7 @@ export default function Contacts({ navigation }) {
       })
       thread = { _id: t.id, members: [item.uid, user.uid] }
     }
-    navigation.navigate('Chat', { title: item.displayName, thread })
+    navigation.navigate('Chat', { title: item.displayName, photoUrl: item.photoUrl, thread })
   }
   return (
     <View style={styles.screen}>

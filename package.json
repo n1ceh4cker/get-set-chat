@@ -29,8 +29,10 @@
     "react-native-safe-area-context": "^3.2.0",
     "react-native-screens": "~3.4.0",
     "react-native-simple-storage": "^0.0.3",
+    "react-native-svg": "^12.1.1",
     "react-native-unimodules": "~0.14.5",
-    "react-native-web": "~0.13.12"
+    "react-native-web": "~0.13.12",
+    "rn-emoji-keyboard": "^0.4.0"
   },
   "devDependencies": {
     "@babel/core": "^7.9.0"
