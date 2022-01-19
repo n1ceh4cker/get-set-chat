@@ -17,6 +17,8 @@ export function AuthProvider({ children }) {
     auth().signOut()
     setUser(null)
     await AsyncStorage.removeItem('user')
+    await AsyncStorage.removeItem('preferance')
+    await AsyncStorage.removeItem('background')
     setLoading(false)
   }
   const fetchUser = async () => {

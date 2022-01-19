@@ -1,13 +1,15 @@
 import React, { useContext } from 'react'
 import { NavigationContainer } from '@react-navigation/native'
 import { createStackNavigator } from '@react-navigation/stack'
-import { Colors } from 'react-native-paper'
+import { Colors, useTheme } from 'react-native-paper'
 import { ActivityIndicator, StyleSheet, View } from 'react-native'
 import Home from '../screens/Home'
 import Auth from '../screens/Auth'
 import Contacts from '../screens/Contacts'
 import Chat from '../screens/Chat'
 import Profile from '../screens/Profile'
+import UserInfo from '../screens/UserInfo'
+import Display from '../screens/Display'
 import { AuthContext } from '../context/AuthProvider'
 import CustomNavigationBar from './CustomNavigationBar'
 
@@ -23,6 +25,8 @@ const HomeStack = () => (
     <Stack.Screen name='Home' component={Home} />
     <Stack.Screen name='Contacts' component={Contacts} />
     <Stack.Screen name='Chat' component={Chat} />
+    <Stack.Screen name='Profile' component={Profile} />
+    <Stack.Screen name='Display' component={Display} />
   </Stack.Navigator>
 )
 export default function Navigator() {
@@ -43,7 +47,7 @@ export default function Navigator() {
           user ?
             <>
               <Stack.Screen name='HomeStack' component={HomeStack} />
-              <Stack.Screen name='Profile' component={Profile} />
+              <Stack.Screen name='UserInfo' component={UserInfo} />
             </> :
             <Stack.Screen name='Auth' component={Auth} />
         }

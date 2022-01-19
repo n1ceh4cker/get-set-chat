@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react'
-import { View, StyleSheet, StatusBar } from 'react-native'
+import { View, StyleSheet, AsyncStorage } from 'react-native'
 import { Avatar, List, Banner, IconButton, TextInput, useTheme, FAB, Colors } from 'react-native-paper'
 import { AuthContext } from '../context/AuthProvider'
 import storage from '@react-native-firebase/storage'
@@ -10,6 +10,8 @@ export default function Profile({ navigation }) {
   const { user, setUser } = useContext(AuthContext)
   const [visible, setVisible] = useState(false)
   const [name, setName] = useState('')
+  const [visible1, setVisible1] = useState(false)
+  const [about, setAbout] = useState('')
   const theme = useTheme()
   async function updateImage() {
     const _image = await launchImageLibraryAsync({
@@ -26,6 +28,7 @@ export default function Profile({ navigation }) {
       const u = snapshot.data()
       u.uid = snapshot.id
       setUser(u)
+      await AsyncStorage.setItem('user', JSON.stringify(u))
     }
   }
   async function updateName() {
@@ -36,19 +39,31 @@ export default function Profile({ navigation }) {
     const u = snapshot.data()
     u.uid = snapshot.id
     setUser(u)
+    await AsyncStorage.setItem('user', JSON.stringify(u))
   }
+  async function updateAbout() {
+    await firestore().collection('users').doc(user.uid).update({
+      about: about
+    })
+    const snapshot = await firestore().collection('users').doc(user.uid).get()
+    const u = snapshot.data()
+    u.uid = snapshot.id
+    setUser(u)
+    await AsyncStorage.setItem('user', JSON.stringify(u))
+  }
+
   return (
-    <View style={styles.screen}>
-      <View style={styles.center}>
-        <Avatar.Image size={150} source={{ uri: user.photoUrl }} style={styles.avatar} />
-        <FAB icon='camera' onPress={updateImage} style={styles.fab} />
+    <View style={styles(theme).screen}>
+      <View style={styles(theme).center}>
+        <Avatar.Image size={150} source={{ uri: user.photoUrl }} style={styles(theme).avatar} />
+        <FAB icon='camera' onPress={updateImage} style={styles(theme).fab} />
       </View>
       <List.Section>
         <List.Item
           title="Name"
           description={user.displayName}
           left={props => <List.Icon icon='account' />}
-          right={props => <IconButton icon='pencil' onPress={() => setVisible(true)} />}
+          right={props => <IconButton icon='pencil' onPress={() => { setVisible1(false); setVisible(true) }} />}
         />
         <Banner
           visible={visible}
@@ -66,10 +81,38 @@ export default function Profile({ navigation }) {
         >
 
           <TextInput
-            style={styles.input}
-            placeholder='Enter your name'
+            style={styles(theme).input}
+            placeholder='Enter your name  '
             value={name}
             onChangeText={(text) => setName(text)}
+          />
+        </Banner>
+        <List.Item
+          title="About"
+          description={user.about}
+          left={props => <List.Icon icon='alert-circle' />}
+          right={props => <IconButton icon='pencil' onPress={() => { setVisible(false); setVisible1(true) }} />}
+        />
+        <Banner
+          visible={visible1}
+          actions={[
+            {
+              label: 'Cancel',
+              onPress: () => setVisible1(false)
+            },
+            {
+              label: 'Save',
+              onPress: () => { setVisible1(false); updateAbout() }
+            }
+          ]}
+          contentStyle={{ backgroundColor: theme.colors.background }}
+        >
+
+          <TextInput
+            style={styles(theme).input}
+            placeholder='Tell something about you  '
+            value={about}
+            onChangeText={(text) => setAbout(text)}
           />
         </Banner>
         <List.Item
@@ -81,11 +124,11 @@ export default function Profile({ navigation }) {
     </View>
   )
 }
-const styles = StyleSheet.create({
+const styles = theme => StyleSheet.create({
   screen: {
-    display: 'flex',
-    marginTop: StatusBar.currentHeight,
-    padding: 5
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    padding: 10
   },
   center: {
     alignSelf: 'center'

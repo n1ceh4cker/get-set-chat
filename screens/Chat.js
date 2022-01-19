@@ -1,17 +1,19 @@
 import React, { useContext, useEffect, useState, useCallback, createRef } from 'react'
 import firestore from '@react-native-firebase/firestore';
 import storage from '@react-native-firebase/storage'
-import { GiftedChat, Send, InputToolbar, Bubble, Composer, MessageImage } from 'react-native-gifted-chat'
+import { GiftedChat, Send, InputToolbar, Bubble, Composer, MessageImage, Day } from 'react-native-gifted-chat'
 import { AuthContext } from '../context/AuthProvider'
-import { IconButton, Colors, Text, Portal, Modal, FAB, ActivityIndicator } from 'react-native-paper'
-import { StyleSheet, View, Linking, Image, Keyboard, BackHandler } from 'react-native'
+import { IconButton, Colors, Text, FAB, ActivityIndicator, useTheme } from 'react-native-paper'
+import { StyleSheet, View, Linking, Image, Keyboard, BackHandler, ImageBackground } from 'react-native'
 import { TouchableOpacity, Swipeable } from 'react-native-gesture-handler'
 import { EmojiKeyboard } from 'rn-emoji-keyboard';
 import { launchImageLibraryAsync, launchCameraAsync } from 'expo-image-picker'
 import { getDocumentAsync } from 'expo-document-picker'
+import { DisplayContext } from '../context/DisplayProvider';
 
 export default function Chat({ navigation, route }) {
   const { user } = useContext(AuthContext)
+  const { background } = useContext(DisplayContext)
   const { title, thread } = route.params
   const [messages, setMessages] = useState([])
   const [text, setText] = useState('')
@@ -19,6 +21,7 @@ export default function Chat({ navigation, route }) {
   const [show, setShow] = useState(false)
   const [visible, setVisible] = useState(false)
   const gcRef = createRef()
+  const theme = useTheme()
   useEffect(() => {
     const subscribe = firestore().collection('threads').doc(thread._id)
       .collection('messages').orderBy('createdAt', 'desc').onSnapshot((querySnapshot) => {
@@ -60,7 +63,7 @@ export default function Chat({ navigation, route }) {
     })
   }, [])
   const Loading = () => (
-    <View style={styles.loading}>
+    <View style={styles(theme).loading}>
       <ActivityIndicator size='large' color={Colors.grey200} />
     </View>
   )
@@ -68,11 +71,11 @@ export default function Chat({ navigation, route }) {
     <>
       {
         props.currentMessage.reply &&
-        <View style={styles.row}>
-          <View style={styles.bar} />
-          <View style={styles.reply}>
+        <View style={styles(theme).row}>
+          <View style={styles(theme).bar} />
+          <View style={styles(theme).reply}>
             <View style={{ flexDirection: 'column' }}>
-              <Text style={styles.username}>{props.currentMessage.reply.user === user.uid ? 'You' : title}</Text>
+              <Text style={styles(theme).username}>{props.currentMessage.reply.user === user.uid ? 'You' : title}</Text>
               <Text style={{ fontSize: 12 }}>
                 {
                   props.currentMessage.reply.message ? props.currentMessage.reply.message :
@@ -83,7 +86,7 @@ export default function Chat({ navigation, route }) {
             </View>
             {
               props.currentMessage.reply.image &&
-              <Image style={styles.replyImage} source={{ uri: props.currentMessage.reply.image }} />
+              <Image style={styles(theme).replyImage} source={{ uri: props.currentMessage.reply.image }} />
             }
           </View>
         </View>
@@ -91,7 +94,7 @@ export default function Chat({ navigation, route }) {
       {
         props.currentMessage.document &&
         <TouchableOpacity onPress={() => openDocument(props.currentMessage.document)}>
-          <View style={styles.document}>
+          <View style={styles(theme).document}>
             <IconButton icon={props.currentMessage.name.split('.')[1] == 'pdf' ? 'file-pdf' : 'file-document'} style={{ margin: -5 }} />
             <Text>{props.currentMessage.name}</Text>
           </View>
@@ -115,11 +118,11 @@ export default function Chat({ navigation, route }) {
     <>
       {
         reply &&
-        <View style={styles.chatFooter}>
-          <View style={styles.bar} />
-          <View style={styles.reply}>
+        <View style={styles(theme).chatFooter}>
+          <View style={styles(theme).bar} />
+          <View style={{ ...styles(theme).reply, backgroundColor: theme.colors.background }}>
             <View style={{ flexDirection: 'column' }}>
-              <Text style={styles.username}>{reply.user === user.uid ? 'You' : title}</Text>
+              <Text style={styles(theme).username}>{reply.user === user.uid ? 'You' : title}</Text>
               <Text style={{ fontSize: 12 }}>
                 {
                   reply.message ? reply.message :
@@ -130,7 +133,7 @@ export default function Chat({ navigation, route }) {
             </View>
             {
               reply.image &&
-              <Image style={styles.replyImage} source={{ uri: reply.image }} />
+              <Image style={styles(theme).replyImage} source={{ uri: reply.image }} />
             }
           </View>
           <IconButton icon='close' onPress={() => setReply(null)} />
@@ -143,21 +146,21 @@ export default function Chat({ navigation, route }) {
       renderLeftActions={() => <IconButton icon='reply' />}
       onSwipeableLeftOpen={() => { setReply({ message: props.currentMessage.text, user: props.currentMessage.user._id, image: props.currentMessage.image, document: props.currentMessage.document, name: props.currentMessage.name }) }}>
       <Bubble {...props}
-        wrapperStyle={{ right: styles.wrapperRight, left: styles.wrapperLeft }}
-        textStyle={{ right: styles.text, left: styles.text }}
+        wrapperStyle={{ right: styles(theme).wrapperRight, left: styles(theme).wrapperLeft }}
+        textStyle={{ right: styles(theme).text, left: styles(theme).text }}
         renderCustomView={renderCustomView}
       />
     </Swipeable>
   )
   const renderSend = (props) => (
-    <Send {...props} containerStyle={styles.send}>
+    <Send {...props} containerStyle={styles(theme).send}>
       <IconButton icon='send-circle' size={50} color={Colors.green800} />
     </Send>
   )
   const renderComposer = (props) => (
     <View style={{ flexGrow: 1, flexShrink: 1 }}>
-      <Composer {...props} textInputStyle={styles.composer} />
-      <IconButton style={styles.attachmentIcon} color={Colors.grey500} icon='attachment' onPress={() => { Keyboard.dismiss(); setVisible(!visible) }} />
+      <Composer {...props} textInputStyle={styles(theme).composer} />
+      <IconButton style={styles(theme).attachmentIcon} color={Colors.grey500} icon='attachment' onPress={() => { Keyboard.dismiss(); setVisible(!visible) }} />
     </View>
   )
   const sendImage = async (type, reply = null) => {
@@ -243,23 +246,26 @@ export default function Chat({ navigation, route }) {
     }
   }
   const renderActions = (props) => (
-    <View {...props} style={styles.actions}>
+    <View {...props} style={styles(theme).actions}>
       {show ? <IconButton icon='keyboard-outline' color={Colors.grey400} onPress={() => { setShow(false); gcRef.current.focusTextInput(); }} /> :
         <IconButton icon='emoticon-outline' color={Colors.grey400} onPress={() => { Keyboard.dismiss(); setShow(true); }} />}
     </View>
   )
   const renderInputToolbar = (props) => (
     <InputToolbar {...props}
-      containerStyle={styles.inputToolbar}
+      containerStyle={styles(theme).inputToolbar}
       renderSend={renderSend}
       renderComposer={renderComposer}
       renderActions={renderActions}
     />
   )
+  const renderDay = props => {
+    return <Day {...props} wrapperStyle={styles(theme).wrapperDay} textStyle={styles(theme).text} />
+  }
   const scrollToBottomComponent = () => (
-    <IconButton icon='chevron-double-down' size={25} color={Colors.grey500} />
+    <IconButton icon='chevron-double-down' size={25} color={theme.dark ? Colors.grey900 : Colors.grey500} />
   )
-  return (<>
+  return (<ImageBackground source={{ uri: background }} style={{ flex: 1, justifyContent: 'center', resizeMode: 'cover' }}>
     <GiftedChat
       messages={messages}
       onSend={messages => onSend(messages, reply)}
@@ -272,22 +278,24 @@ export default function Chat({ navigation, route }) {
       renderAvatar={null}
       scrollToBottom
       scrollToBottomComponent={scrollToBottomComponent}
-      timeTextStyle={{ left: styles.timeText, right: styles.timeText }}
+      renderDay={renderDay}
+      timeTextStyle={{ left: styles(theme).timeText, right: styles(theme).timeText }}
       text={text}
       onInputTextChanged={(text) => setText(text)}
       textInputProps={{ onFocus: () => setShow(false) }}
       renderChatFooter={renderChatFooter}
       ref={gcRef}
       renderMessageImage={renderMessageImage}
+      listViewProps={{ style: { backgroundColor: 'transparent' } }}
     />
-    <EmojiKeyboard containerStyles={{ display: show ? 'flex' : 'none' }} categoryPosition='bottom' onEmojiSelected={e => setText(prevText => prevText + e.emoji)} />
+    <EmojiKeyboard containerStyles={{ display: show ? 'flex' : 'none', backgroundColor: theme.colors.background, borderRadius: 0 }} backdropColor={theme.colors.backdrop} categoryColor={theme.colors.text} categoryPosition='bottom' onEmojiSelected={e => setText(prevText => prevText + e.emoji)} />
     <FAB visible={visible} style={{ position: "absolute", bottom: 60, right: 90 }} icon='camera' onPress={() => sendImage('camera', reply)} />
     <FAB visible={visible} style={{ position: "absolute", bottom: 140, right: 90 }} icon='image' onPress={() => sendImage('library', reply)} />
     <FAB visible={visible} style={{ position: "absolute", bottom: 220, right: 90 }} icon='file' onPress={() => sendDocument(reply)} />
-  </>
+  </ImageBackground>
   )
 }
-const styles = StyleSheet.create({
+const styles = theme => StyleSheet.create({
   inputToolbar: {
     backgroundColor: 'transparent',
     borderTopWidth: 0,
@@ -298,23 +306,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   composer: {
-    backgroundColor: Colors.white,
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.text,
     borderRadius: 20,
     padding: 10,
     paddingHorizontal: 35
   },
   wrapperRight: {
-    backgroundColor: Colors.green500
+    backgroundColor: theme.dark ? Colors.green900 : Colors.green500
   },
   wrapperLeft: {
-    backgroundColor: Colors.grey300
+    backgroundColor: theme.dark ? Colors.blueGrey900 : Colors.blueGrey100
+  },
+  wrapperDay: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 10,
+    padding: 10
   },
   text: {
     marginBottom: 0,
-    fontFamily: 'Quicksand'
+    fontFamily: 'Quicksand',
+    color: theme.colors.text
   },
   timeText: {
-    fontFamily: 'Quicksand'
+    fontFamily: 'Quicksand',
+    color: theme.colors.text
   },
   chatFooter: {
     flexDirection: 'row',

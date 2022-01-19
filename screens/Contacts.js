@@ -2,7 +2,7 @@ import React, { useContext, useState } from 'react'
 import firestore from '@react-native-firebase/firestore';
 import { View, TouchableOpacity, StyleSheet } from 'react-native'
 import { FlatList } from 'react-native-gesture-handler'
-import { List, Avatar, Divider, Colors } from 'react-native-paper'
+import { List, Avatar, Divider, Colors, useTheme } from 'react-native-paper'
 import { AuthContext } from '../context/AuthProvider'
 import { UserContext } from '../context/UserProvider'
 import { ThreadContext } from '../context/ThreadProvider'
@@ -12,6 +12,7 @@ export default function Contacts({ navigation }) {
   const users = useContext(UserContext)
   const threads = useContext(ThreadContext)
   const [loading, setLoading] = useState(false)
+  const theme = useTheme()
   async function getThread(item) {
     setLoading(true)
     let thread
@@ -24,10 +25,10 @@ export default function Contacts({ navigation }) {
       })
       thread = { _id: t.id, members: [item.uid, user.uid] }
     }
-    navigation.navigate('Chat', { title: item.displayName, photoUrl: item.photoUrl, thread })
+    navigation.navigate('Chat', { title: item.displayName, user: item, thread })
   }
   return (
-    <View style={styles.screen}>
+    <View style={styles(theme).screen}>
       {users &&
         <FlatList
           data={users.filter(u => u.uid !== user.uid)}
@@ -37,7 +38,7 @@ export default function Contacts({ navigation }) {
               <List.Item
                 title={item.displayName}
                 description={item.phoneNumber !== item.displayName ? item.phoneNumber : null}
-                left={props => <Avatar.Image size={50} style={styles.avatar} source={{ uri: item.photoUrl }} />}
+                left={props => <Avatar.Image size={50} style={styles(theme).avatar} source={{ uri: item.photoUrl }} />}
               />
               <Divider inset={30} />
             </TouchableOpacity>
@@ -47,10 +48,10 @@ export default function Contacts({ navigation }) {
     </View>
   )
 }
-const styles = StyleSheet.create({
+const styles = theme => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: Colors.white
+    backgroundColor: theme.colors.background
   },
   avatar: {
     backgroundColor: Colors.grey200
